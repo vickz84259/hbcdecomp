@@ -1,0 +1,8 @@
+[package]
+name = "hbcdecomp"
+version = "0.1.0"
+authors = ["Victor Omondi <victor@slick.co.ke>"]
+edition = "2018"
+license = "MIT"
+
+[dependencies]
