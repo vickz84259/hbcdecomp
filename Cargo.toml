@@ -6,3 +6,5 @@ edition = "2018"
 license = "MIT"
 
 [dependencies]
+nom = "6.1.0"
+bitflags = "1.2.1"
