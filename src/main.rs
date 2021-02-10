@@ -1,6 +1,6 @@
 use std::fs;
 
-use bitflags::bitflags;
+use bitfield::bitfield;
 use nom::{
     bytes::complete::take,
     combinator::{map, verify},
@@ -14,11 +14,11 @@ const MAGIC: u64 = 0x1F1903C103BC1FC6;
 const SHA1_NUM_BYTES: usize = 20;
 const HEADER_PADDING: usize = 31; // bytes
 
-bitflags! {
-    struct ByteCodeOptions: u8 {
-        const STATIC_BUILTINS = 0b0001;
-        const CJS_MODULES_STATICALLY_RESOLVED = 0b0010;
-    }
+bitfield! {
+    struct ByteCodeOptions(u8);
+    impl Debug;
+    static_builtins, _: 0;
+    cjs_modules_statically_resolved, _: 1;
 }
 
 #[derive(Debug)]
@@ -42,7 +42,7 @@ struct FileHeader<'a> {
     cjs_module_offset: u32, // The starting module ID in this segment
     cjs_module_count: u32,  // Number of modules
     debug_info_offset: u32,
-    bytecode_options: u8,
+    bytecode_options: ByteCodeOptions,
 }
 
 fn magic_parser(input: &[u8]) -> IResult<&[u8], u64> {
@@ -59,6 +59,10 @@ fn entries_parser(input: &[u8]) -> IResult<&[u8], Vec<u32>> {
     count(le_u32, entries_count)(input)
 }
 
+fn options_parser(input: &[u8]) -> IResult<&[u8], ByteCodeOptions> {
+    map(le_u8, |result: u8| ByteCodeOptions(result))(input)
+}
+
 fn padding(input: &[u8]) -> IResult<&[u8], &[u8]> {
     take(HEADER_PADDING)(input)
 }
@@ -66,8 +70,14 @@ fn padding(input: &[u8]) -> IResult<&[u8], &[u8]> {
 fn header(input: &[u8]) -> IResult<&[u8], FileHeader> {
     terminated(
         map(
-            tuple((magic_parser, le_u32, hash_parser, entries_parser, le_u8)),
-            |result: (u64, u32, &[u8], Vec<u32>, u8)| {
+            tuple((
+                magic_parser,
+                le_u32,
+                hash_parser,
+                entries_parser,
+                options_parser,
+            )),
+            |result: (u64, u32, &[u8], Vec<u32>, ByteCodeOptions)| {
                 let (magic, version, source_hash, entries, bytecode_options) = result;
                 FileHeader {
                     magic,
