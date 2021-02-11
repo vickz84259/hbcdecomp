@@ -10,8 +10,8 @@ use nom::{
 };
 
 use bytecode_format::{
-    ByteCodeOptions, FileHeader, FunctionHeader, SmallStringTableEntry, StringKind,
-    BYTECODE_ALIGNMENT, MAGIC, SHA1_NUM_BYTES,
+    ByteCodeOptions, FileHeader, FunctionHeader, OverflowStringTableEntry, SmallStringTableEntry,
+    StringKind, BYTECODE_ALIGNMENT, MAGIC, SHA1_NUM_BYTES,
 };
 
 mod bytecode_format;
@@ -122,6 +122,12 @@ fn string_table_entry(input: &[u8]) -> ParserResult<SmallStringTableEntry> {
     map(le_u32, |result| SmallStringTableEntry(result))(input)
 }
 
+fn overflow_table_entry(input: &[u8]) -> ParserResult<OverflowStringTableEntry> {
+    map(tuple((le_u32, le_u32)), |(offset, length)| {
+        OverflowStringTableEntry { offset, length }
+    })(input)
+}
+
 fn main() {
     let bytes_vec = fs::read("target/test.hbc").expect("Unable to read file");
     let bytes = bytes_vec.as_slice();
@@ -141,10 +147,12 @@ fn main() {
         multi_parser(bytes, identifier_count, &le_u32)(bytes_remaining).unwrap();
 
     let string_count = file_header.string_count as usize;
-    let small_string_table =
-        multi_parser(bytes, string_count, &string_table_entry)(bytes_remaining)
-            .unwrap()
-            .1;
+    let (bytes_remaining, _small_string_table) =
+        multi_parser(bytes, string_count, &string_table_entry)(bytes_remaining).unwrap();
 
-    println!("{:X?}", small_string_table);
+    let overflow_count = file_header.overflow_string_count as usize;
+    let overflow_string_table =
+        multi_parser(bytes, overflow_count, &overflow_table_entry)(bytes_remaining).unwrap();
+
+    println!("{:X?}", overflow_string_table);
 }

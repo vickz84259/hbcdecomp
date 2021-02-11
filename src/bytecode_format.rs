@@ -138,3 +138,9 @@ bitfield! {
     pub offset, _: 23, 1; // 23 bits
     pub length, _: 31, 24; // 7 bits
 }
+
+#[derive(Debug)]
+pub struct OverflowStringTableEntry {
+    pub offset: u32,
+    pub length: u32,
+}
