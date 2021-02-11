@@ -5,14 +5,33 @@ use nom::{
     bytes::complete::take,
     combinator::{map, verify},
     multi::count,
-    number::complete::{le_u32, le_u64, le_u8},
+    number::complete::{le_u128, le_u32, le_u64, le_u8},
     sequence::{terminated, tuple},
-    IResult,
+    IResult, Offset,
 };
 
 const MAGIC: u64 = 0x1F1903C103BC1FC6;
 const SHA1_NUM_BYTES: usize = 20;
+
 const HEADER_PADDING: usize = 31; // bytes
+const BYTECODE_ALIGNMENT: usize = 4; // bytes
+
+trait Align {
+    fn align(self, alignment: usize, other: Self) -> Self;
+}
+
+impl<'a> Align for &'a [u8] {
+    fn align(self, alignment: usize, other: Self) -> Self {
+        // Necessary??
+        // assert!(alignment > 0 && alignment <= 8 && ((alignment & (alignment - 1)) == 0))
+
+        let bytes_read = self.offset(other);
+        match bytes_read % alignment {
+            0 => other,
+            result => &other[(alignment - result)..],
+        }
+    }
+}
 
 bitfield! {
     struct ByteCodeOptions(u8);
@@ -107,9 +126,78 @@ fn header(input: &[u8]) -> IResult<&[u8], FileHeader> {
     )(input)
 }
 
-fn main() {
-    let bytes = fs::read("target/test.hbc").expect("Unable to read file");
+#[derive(Debug)]
+enum Prohibit {
+    ProhibitCall,
+    ProhibitConstruct,
+    ProhibitNone,
+}
 
-    let file_header = header(&bytes[..]).unwrap().1;
-    println!("{:X?}", file_header);
+impl From<u8> for Prohibit {
+    fn from(item: u8) -> Self {
+        match item {
+            0 => Prohibit::ProhibitCall,
+            1 => Prohibit::ProhibitConstruct,
+            2 => Prohibit::ProhibitNone,
+            _ => panic!("This shouldn't happen"),
+        }
+    }
+}
+
+bitfield! {
+    struct FunctionHeaderFlag(u8);
+    impl Debug;
+    into Prohibit, prohibit_invoke, _: 1, 0;
+    strict_mode, _: 2;
+    has_exception_handler, _: 3;
+    has_debug_info, _: 4;
+    overflowed, _: 5;
+}
+
+impl From<u8> for FunctionHeaderFlag {
+    fn from(item: u8) -> Self {
+        Self(item)
+    }
+}
+
+bitfield! {
+    struct FunctionHeader(u128);
+    impl Debug;
+    u32;
+    offset, _: 24, 0;
+    param_count, _: 31, 25;
+
+    bytecode_size_in_bytes, _: 46, 32;
+    function_name, _: 63, 47;
+
+    info_offset, _: 88, 64;
+    frame_size, _: 95, 89;
+
+    u8, environment_size, _: 103, 96;
+    u8, highest_read_cache_index, _: 111, 104;
+    u8, highest_write_cache_index, _: 119, 112;
+    u8, into FunctionHeaderFlag, flags, _: 127, 120;
+}
+
+fn get_func_headers_parser<'a>(
+    bytes: &'a [u8],
+    func_count: usize,
+) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], Vec<FunctionHeader>> {
+    move |input| {
+        let input = bytes.align(BYTECODE_ALIGNMENT, input);
+        count(map(le_u128, |result| FunctionHeader(result)), func_count)(input)
+    }
+}
+
+fn main() {
+    let bytes_vec = fs::read("target/test.hbc").expect("Unable to read file");
+    let bytes = bytes_vec.as_slice();
+
+    let (bytes_remaining, file_header) = header(bytes).unwrap();
+    let func_count = file_header.function_count as usize;
+
+    let func_headers_parser = get_func_headers_parser(bytes, func_count);
+    let func_headers = func_headers_parser(bytes_remaining).unwrap().1;
+
+    println!("{:?}", func_headers);
 }
