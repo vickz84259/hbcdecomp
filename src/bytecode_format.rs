@@ -88,3 +88,44 @@ bitfield! {
     pub u8, highest_write_cache_index, _: 119, 112; // 8 bits
     pub u8, into FunctionHeaderFlag, flags, _: 127, 120; // 8 bits
 }
+
+const COUNT_BITS: u32 = 31;
+const MAX_COUNT: u32 = (1 << COUNT_BITS) - 1;
+
+const STRING_KIND: u32 = 0 << COUNT_BITS;
+const IDENTIFIER_KIND: u32 = 1 << COUNT_BITS;
+
+#[derive(Debug, Copy, Clone)]
+#[repr(u32)]
+pub enum Kind {
+    String = STRING_KIND,
+    Identifier = IDENTIFIER_KIND,
+}
+
+impl Kind {
+    fn new(value: u32) -> Self {
+        match value {
+            STRING_KIND => Kind::String,
+            IDENTIFIER_KIND => Kind::Identifier,
+            _ => panic!("Unknown Kind"),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct StringKind {
+    kind: Kind,
+    count: u32,
+}
+
+impl StringKind {
+    pub fn new(value: u32) -> Self {
+        let count = value & MAX_COUNT;
+        let kind = Kind::new(value & !MAX_COUNT);
+
+        // assert!((kind as u32 & MAX_COUNT) == 0, "Kind overlapping with count storage.");
+        // assert!(1 <= count && count <= MAX_COUNT, "Count out of bounds");
+
+        Self { count, kind }
+    }
+}

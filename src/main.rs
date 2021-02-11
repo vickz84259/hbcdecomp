@@ -10,7 +10,8 @@ use nom::{
 };
 
 use bytecode_format::{
-    ByteCodeOptions, FileHeader, FunctionHeader, BYTECODE_ALIGNMENT, MAGIC, SHA1_NUM_BYTES,
+    ByteCodeOptions, FileHeader, FunctionHeader, StringKind, BYTECODE_ALIGNMENT, MAGIC,
+    SHA1_NUM_BYTES,
 };
 
 mod bytecode_format;
@@ -106,6 +107,16 @@ fn get_func_headers_parser<'a>(
     }
 }
 
+fn get_string_kinds_parser<'a>(
+    bytes: &'a [u8],
+    kinds_count: usize,
+) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], Vec<StringKind>> {
+    move |input| {
+        let input = bytes.align(BYTECODE_ALIGNMENT, input);
+        count(map(le_u32, |result| StringKind::new(result)), kinds_count)(input)
+    }
+}
+
 fn main() {
     let bytes_vec = fs::read("target/test.hbc").expect("Unable to read file");
     let bytes = bytes_vec.as_slice();
@@ -114,7 +125,11 @@ fn main() {
     let func_count = file_header.function_count as usize;
 
     let func_headers_parser = get_func_headers_parser(bytes, func_count);
-    let func_headers = func_headers_parser(bytes_remaining).unwrap().1;
+    let (bytes_remaining, func_headers) = func_headers_parser(bytes_remaining).unwrap();
 
-    println!("{:?}", func_headers);
+    let kinds_count = file_header.string_kind_count as usize;
+    let string_kinds_parser = get_string_kinds_parser(bytes, kinds_count);
+    let string_kinds = string_kinds_parser(bytes_remaining).unwrap().1;
+
+    println!("{:X?}", string_kinds);
 }
