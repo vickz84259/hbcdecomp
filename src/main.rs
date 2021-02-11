@@ -129,7 +129,13 @@ fn main() {
         multi_parser(bytes, func_count, &function_header)(bytes_remaining).unwrap();
 
     let kinds_count = file_header.string_kind_count as usize;
-    let string_kinds = multi_parser(bytes, kinds_count, &string_kind)(bytes_remaining).unwrap();
+    let (bytes_remaining, _string_kinds) =
+        multi_parser(bytes, kinds_count, &string_kind)(bytes_remaining).unwrap();
 
-    println!("{:X?}", string_kinds);
+    let identifier_count = file_header.identifier_count as usize;
+    let identifier_hashes = multi_parser(bytes, identifier_count, &le_u32)(bytes_remaining)
+        .unwrap()
+        .1;
+
+    println!("{:X?}", identifier_hashes);
 }
