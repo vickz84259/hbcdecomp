@@ -96,7 +96,7 @@ fn header(input: &[u8]) -> ParserResult<FileHeader> {
     )(input)
 }
 
-fn multi_parser<'a, F, O>(
+fn multi_count_parser<'a, F, O>(
     bytes: &'a [u8],
     count: usize,
     func: &'a F,
@@ -128,7 +128,7 @@ fn overflow_table_entry(input: &[u8]) -> ParserResult<OverflowStringTableEntry> 
     })(input)
 }
 
-fn string_storage<'a>(bytes: &'a [u8], size: usize) -> impl Fn(&'a [u8]) -> ParserResult<&[u8]> {
+fn multi_take_parser<'a>(bytes: &'a [u8], size: usize) -> impl Fn(&'a [u8]) -> ParserResult<&[u8]> {
     move |input| {
         let input = bytes.align(BYTECODE_ALIGNMENT, input);
         take(size)(input)
@@ -143,28 +143,38 @@ fn main() {
 
     let func_count = file_header.function_count as usize;
     let (bytes_remaining, _func_headers) =
-        multi_parser(bytes, func_count, &function_header)(bytes_remaining).unwrap();
+        multi_count_parser(bytes, func_count, &function_header)(bytes_remaining).unwrap();
 
     let kinds_count = file_header.string_kind_count as usize;
     let (bytes_remaining, _string_kinds) =
-        multi_parser(bytes, kinds_count, &string_kind)(bytes_remaining).unwrap();
+        multi_count_parser(bytes, kinds_count, &string_kind)(bytes_remaining).unwrap();
 
     let identifier_count = file_header.identifier_count as usize;
     let (bytes_remaining, _identifier_hashes) =
-        multi_parser(bytes, identifier_count, &le_u32)(bytes_remaining).unwrap();
+        multi_count_parser(bytes, identifier_count, &le_u32)(bytes_remaining).unwrap();
 
     let string_count = file_header.string_count as usize;
     let (bytes_remaining, _small_string_table) =
-        multi_parser(bytes, string_count, &string_table_entry)(bytes_remaining).unwrap();
+        multi_count_parser(bytes, string_count, &string_table_entry)(bytes_remaining).unwrap();
 
     let overflow_count = file_header.overflow_string_count as usize;
     let (bytes_remaining, _overflow_string_table) =
-        multi_parser(bytes, overflow_count, &overflow_table_entry)(bytes_remaining).unwrap();
+        multi_count_parser(bytes, overflow_count, &overflow_table_entry)(bytes_remaining).unwrap();
 
-    let storage_size = file_header.string_storage_size as usize;
-    let storage = string_storage(bytes, storage_size)(bytes_remaining)
-        .unwrap()
-        .1;
+    let string_storage_size = file_header.string_storage_size as usize;
+    let array_buffer_size = file_header.array_buffer_size as usize;
 
-    println!("{:?}", std::str::from_utf8(storage).unwrap());
+    let obj_key_buffer_size = file_header.obj_key_buffer_size as usize;
+    let obj_value_buffer_size = file_header.obj_value_buffer_size as usize;
+
+    let result = tuple((
+        multi_take_parser(bytes, string_storage_size),
+        multi_take_parser(bytes, array_buffer_size),
+        multi_take_parser(bytes, obj_key_buffer_size),
+        multi_take_parser(bytes, obj_value_buffer_size),
+    ))(bytes_remaining)
+    .unwrap()
+    .1;
+
+    println!("{:?}", result);
 }
