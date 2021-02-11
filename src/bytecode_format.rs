@@ -129,3 +129,12 @@ impl StringKind {
         Self { count, kind }
     }
 }
+
+bitfield! {
+    pub struct SmallStringTableEntry(u32);
+    impl Debug;
+
+    pub is_utf_16, _: 0; // 1 bit
+    pub offset, _: 23, 1; // 23 bits
+    pub length, _: 31, 24; // 7 bits
+}

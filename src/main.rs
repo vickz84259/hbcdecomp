@@ -10,8 +10,8 @@ use nom::{
 };
 
 use bytecode_format::{
-    ByteCodeOptions, FileHeader, FunctionHeader, StringKind, BYTECODE_ALIGNMENT, MAGIC,
-    SHA1_NUM_BYTES,
+    ByteCodeOptions, FileHeader, FunctionHeader, SmallStringTableEntry, StringKind,
+    BYTECODE_ALIGNMENT, MAGIC, SHA1_NUM_BYTES,
 };
 
 mod bytecode_format;
@@ -118,6 +118,10 @@ fn string_kind(input: &[u8]) -> ParserResult<StringKind> {
     map(le_u32, |result| StringKind::new(result))(input)
 }
 
+fn string_table_entry(input: &[u8]) -> ParserResult<SmallStringTableEntry> {
+    map(le_u32, |result| SmallStringTableEntry(result))(input)
+}
+
 fn main() {
     let bytes_vec = fs::read("target/test.hbc").expect("Unable to read file");
     let bytes = bytes_vec.as_slice();
@@ -133,9 +137,14 @@ fn main() {
         multi_parser(bytes, kinds_count, &string_kind)(bytes_remaining).unwrap();
 
     let identifier_count = file_header.identifier_count as usize;
-    let identifier_hashes = multi_parser(bytes, identifier_count, &le_u32)(bytes_remaining)
-        .unwrap()
-        .1;
+    let (bytes_remaining, _identifier_hashes) =
+        multi_parser(bytes, identifier_count, &le_u32)(bytes_remaining).unwrap();
 
-    println!("{:X?}", identifier_hashes);
+    let string_count = file_header.string_count as usize;
+    let small_string_table =
+        multi_parser(bytes, string_count, &string_table_entry)(bytes_remaining)
+            .unwrap()
+            .1;
+
+    println!("{:X?}", small_string_table);
 }
