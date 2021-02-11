@@ -10,8 +10,8 @@ use nom::{
 };
 
 use bytecode_format::{
-    ByteCodeOptions, FileHeader, FunctionHeader, OverflowStringTableEntry, SmallStringTableEntry,
-    StringKind, BYTECODE_ALIGNMENT, MAGIC, SHA1_NUM_BYTES,
+    ByteCodeOptions, FileHeader, FunctionHeader, OverflowStringTableEntry, RegExpTableEntry,
+    SmallStringTableEntry, StringKind, BYTECODE_ALIGNMENT, MAGIC, SHA1_NUM_BYTES,
 };
 
 mod bytecode_format;
@@ -135,6 +135,12 @@ fn multi_take_parser<'a>(bytes: &'a [u8], size: usize) -> impl Fn(&'a [u8]) -> P
     }
 }
 
+fn regexp_table_entry(input: &[u8]) -> ParserResult<RegExpTableEntry> {
+    map(tuple((le_u32, le_u32)), |(offset, length)| {
+        RegExpTableEntry { offset, length }
+    })(input)
+}
+
 fn main() {
     let bytes_vec = fs::read("target/test.hbc").expect("Unable to read file");
     let bytes = bytes_vec.as_slice();
@@ -167,14 +173,17 @@ fn main() {
     let obj_key_buffer_size = file_header.obj_key_buffer_size as usize;
     let obj_value_buffer_size = file_header.obj_value_buffer_size as usize;
 
-    let result = tuple((
+    let (bytes_remaining, _result) = tuple((
         multi_take_parser(bytes, string_storage_size),
         multi_take_parser(bytes, array_buffer_size),
         multi_take_parser(bytes, obj_key_buffer_size),
         multi_take_parser(bytes, obj_value_buffer_size),
     ))(bytes_remaining)
-    .unwrap()
-    .1;
+    .unwrap();
 
-    println!("{:?}", result);
+    let regexp_count = file_header.reg_exp_count as usize;
+    let (bytes_remaining, regexp_table) =
+        multi_count_parser(bytes, regexp_count, &regexp_table_entry)(bytes_remaining).unwrap();
+
+    println!("{:?}", regexp_table);
 }

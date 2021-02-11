@@ -144,3 +144,9 @@ pub struct OverflowStringTableEntry {
     pub offset: u32,
     pub length: u32,
 }
+
+#[derive(Debug)]
+pub struct RegExpTableEntry {
+    pub offset: u32,
+    pub length: u32,
+}
