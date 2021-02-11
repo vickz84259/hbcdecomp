@@ -16,6 +16,8 @@ use bytecode_format::{
 
 mod bytecode_format;
 
+type ParserResult<'a, O> = IResult<&'a [u8], O>;
+
 const HEADER_PADDING: usize = 31; // bytes
 
 trait Align {
@@ -35,29 +37,29 @@ impl<'a> Align for &'a [u8] {
     }
 }
 
-fn magic_parser(input: &[u8]) -> IResult<&[u8], u64> {
+fn magic_parser(input: &[u8]) -> ParserResult<u64> {
     verify(le_u64, |b: &u64| *b == MAGIC)(input)
 }
 
-fn hash_parser(input: &[u8]) -> IResult<&[u8], &[u8]> {
+fn hash_parser(input: &[u8]) -> ParserResult<&[u8]> {
     take(SHA1_NUM_BYTES)(input)
 }
 
-fn entries_parser(input: &[u8]) -> IResult<&[u8], Vec<u32>> {
+fn entries_parser(input: &[u8]) -> ParserResult<Vec<u32>> {
     // Number of entries in FileHeader after source_hash excluding bytecode_options
     let entries_count = 16;
     count(le_u32, entries_count)(input)
 }
 
-fn options_parser(input: &[u8]) -> IResult<&[u8], ByteCodeOptions> {
+fn options_parser(input: &[u8]) -> ParserResult<ByteCodeOptions> {
     map(le_u8, |result: u8| ByteCodeOptions(result))(input)
 }
 
-fn padding(input: &[u8]) -> IResult<&[u8], &[u8]> {
+fn padding(input: &[u8]) -> ParserResult<&[u8]> {
     take(HEADER_PADDING)(input)
 }
 
-fn header(input: &[u8]) -> IResult<&[u8], FileHeader> {
+fn header(input: &[u8]) -> ParserResult<FileHeader> {
     terminated(
         map(
             tuple((
@@ -67,54 +69,53 @@ fn header(input: &[u8]) -> IResult<&[u8], FileHeader> {
                 entries_parser,
                 options_parser,
             )),
-            |result: (u64, u32, &[u8], Vec<u32>, ByteCodeOptions)| {
-                let (magic, version, source_hash, entries, bytecode_options) = result;
-                FileHeader {
-                    magic,
-                    version,
-                    source_hash,
-                    file_length: entries[0],
-                    global_code_index: entries[1],
-                    function_count: entries[2],
-                    string_kind_count: entries[3],
-                    identifier_count: entries[4],
-                    string_count: entries[5],
-                    overflow_string_count: entries[6],
-                    string_storage_size: entries[7],
-                    reg_exp_count: entries[8],
-                    reg_exp_storage_size: entries[9],
-                    array_buffer_size: entries[10],
-                    obj_key_buffer_size: entries[11],
-                    obj_value_buffer_size: entries[12],
-                    cjs_module_offset: entries[13],
-                    cjs_module_count: entries[14],
-                    debug_info_offset: entries[15],
-                    bytecode_options,
-                }
+            |(magic, version, source_hash, entries, bytecode_options)| FileHeader {
+                magic,
+                version,
+                source_hash,
+                file_length: entries[0],
+                global_code_index: entries[1],
+                function_count: entries[2],
+                string_kind_count: entries[3],
+                identifier_count: entries[4],
+                string_count: entries[5],
+                overflow_string_count: entries[6],
+                string_storage_size: entries[7],
+                reg_exp_count: entries[8],
+                reg_exp_storage_size: entries[9],
+                array_buffer_size: entries[10],
+                obj_key_buffer_size: entries[11],
+                obj_value_buffer_size: entries[12],
+                cjs_module_offset: entries[13],
+                cjs_module_count: entries[14],
+                debug_info_offset: entries[15],
+                bytecode_options,
             },
         ),
         padding,
     )(input)
 }
 
-fn get_func_headers_parser<'a>(
+fn multi_parser<'a, F, O>(
     bytes: &'a [u8],
-    func_count: usize,
-) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], Vec<FunctionHeader>> {
+    count: usize,
+    func: &'a F,
+) -> impl Fn(&'a [u8]) -> ParserResult<Vec<O>>
+where
+    F: Fn(&'a [u8]) -> ParserResult<O>,
+{
     move |input| {
         let input = bytes.align(BYTECODE_ALIGNMENT, input);
-        count(map(le_u128, |result| FunctionHeader(result)), func_count)(input)
+        nom::multi::count(func, count)(input)
     }
 }
 
-fn get_string_kinds_parser<'a>(
-    bytes: &'a [u8],
-    kinds_count: usize,
-) -> impl Fn(&'a [u8]) -> IResult<&'a [u8], Vec<StringKind>> {
-    move |input| {
-        let input = bytes.align(BYTECODE_ALIGNMENT, input);
-        count(map(le_u32, |result| StringKind::new(result)), kinds_count)(input)
-    }
+fn function_header(input: &[u8]) -> ParserResult<FunctionHeader> {
+    map(le_u128, |result| FunctionHeader(result))(input)
+}
+
+fn string_kind(input: &[u8]) -> ParserResult<StringKind> {
+    map(le_u32, |result| StringKind::new(result))(input)
 }
 
 fn main() {
@@ -122,14 +123,13 @@ fn main() {
     let bytes = bytes_vec.as_slice();
 
     let (bytes_remaining, file_header) = header(bytes).unwrap();
-    let func_count = file_header.function_count as usize;
 
-    let func_headers_parser = get_func_headers_parser(bytes, func_count);
-    let (bytes_remaining, func_headers) = func_headers_parser(bytes_remaining).unwrap();
+    let func_count = file_header.function_count as usize;
+    let (bytes_remaining, _func_headers) =
+        multi_parser(bytes, func_count, &function_header)(bytes_remaining).unwrap();
 
     let kinds_count = file_header.string_kind_count as usize;
-    let string_kinds_parser = get_string_kinds_parser(bytes, kinds_count);
-    let string_kinds = string_kinds_parser(bytes_remaining).unwrap().1;
+    let string_kinds = multi_parser(bytes, kinds_count, &string_kind)(bytes_remaining).unwrap();
 
     println!("{:X?}", string_kinds);
 }

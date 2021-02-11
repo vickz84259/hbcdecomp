@@ -114,8 +114,8 @@ impl Kind {
 
 #[derive(Debug)]
 pub struct StringKind {
-    kind: Kind,
-    count: u32,
+    pub kind: Kind,
+    pub count: u32,
 }
 
 impl StringKind {
