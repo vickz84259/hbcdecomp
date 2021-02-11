@@ -128,6 +128,13 @@ fn overflow_table_entry(input: &[u8]) -> ParserResult<OverflowStringTableEntry> 
     })(input)
 }
 
+fn string_storage<'a>(bytes: &'a [u8], size: usize) -> impl Fn(&'a [u8]) -> ParserResult<&[u8]> {
+    move |input| {
+        let input = bytes.align(BYTECODE_ALIGNMENT, input);
+        take(size)(input)
+    }
+}
+
 fn main() {
     let bytes_vec = fs::read("target/test.hbc").expect("Unable to read file");
     let bytes = bytes_vec.as_slice();
@@ -151,8 +158,13 @@ fn main() {
         multi_parser(bytes, string_count, &string_table_entry)(bytes_remaining).unwrap();
 
     let overflow_count = file_header.overflow_string_count as usize;
-    let overflow_string_table =
+    let (bytes_remaining, _overflow_string_table) =
         multi_parser(bytes, overflow_count, &overflow_table_entry)(bytes_remaining).unwrap();
 
-    println!("{:X?}", overflow_string_table);
+    let storage_size = file_header.string_storage_size as usize;
+    let storage = string_storage(bytes, storage_size)(bytes_remaining)
+        .unwrap()
+        .1;
+
+    println!("{:?}", std::str::from_utf8(storage).unwrap());
 }
