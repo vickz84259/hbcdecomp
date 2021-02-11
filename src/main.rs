@@ -1,6 +1,5 @@
 use std::fs;
 
-use bitfield::bitfield;
 use nom::{
     bytes::complete::take,
     combinator::{map, verify},
@@ -10,11 +9,13 @@ use nom::{
     IResult, Offset,
 };
 
-const MAGIC: u64 = 0x1F1903C103BC1FC6;
-const SHA1_NUM_BYTES: usize = 20;
+use bytecode_format::{
+    ByteCodeOptions, FileHeader, FunctionHeader, BYTECODE_ALIGNMENT, MAGIC, SHA1_NUM_BYTES,
+};
+
+mod bytecode_format;
 
 const HEADER_PADDING: usize = 31; // bytes
-const BYTECODE_ALIGNMENT: usize = 4; // bytes
 
 trait Align {
     fn align(self, alignment: usize, other: Self) -> Self;
@@ -31,37 +32,6 @@ impl<'a> Align for &'a [u8] {
             result => &other[(alignment - result)..],
         }
     }
-}
-
-bitfield! {
-    struct ByteCodeOptions(u8);
-    impl Debug;
-    static_builtins, _: 0;
-    cjs_modules_statically_resolved, _: 1;
-}
-
-#[derive(Debug)]
-struct FileHeader<'a> {
-    magic: u64,
-    version: u32, // Bytecode version number
-    source_hash: &'a [u8],
-    file_length: u32, // File size in bytes
-    global_code_index: u32,
-    function_count: u32,        // Number of functions
-    string_kind_count: u32,     // Number of string kind entries
-    identifier_count: u32,      // Number of strings which are identifiers
-    string_count: u32,          // Number of strings in the string table
-    overflow_string_count: u32, // Number of strings in overflow table
-    string_storage_size: u32,   // Bytes in the blob of string contents
-    reg_exp_count: u32,
-    reg_exp_storage_size: u32,
-    array_buffer_size: u32,
-    obj_key_buffer_size: u32,
-    obj_value_buffer_size: u32,
-    cjs_module_offset: u32, // The starting module ID in this segment
-    cjs_module_count: u32,  // Number of modules
-    debug_info_offset: u32,
-    bytecode_options: ByteCodeOptions,
 }
 
 fn magic_parser(input: &[u8]) -> IResult<&[u8], u64> {
@@ -124,59 +94,6 @@ fn header(input: &[u8]) -> IResult<&[u8], FileHeader> {
         ),
         padding,
     )(input)
-}
-
-#[derive(Debug)]
-enum Prohibit {
-    ProhibitCall,
-    ProhibitConstruct,
-    ProhibitNone,
-}
-
-impl From<u8> for Prohibit {
-    fn from(item: u8) -> Self {
-        match item {
-            0 => Prohibit::ProhibitCall,
-            1 => Prohibit::ProhibitConstruct,
-            2 => Prohibit::ProhibitNone,
-            _ => panic!("This shouldn't happen"),
-        }
-    }
-}
-
-bitfield! {
-    struct FunctionHeaderFlag(u8);
-    impl Debug;
-    into Prohibit, prohibit_invoke, _: 1, 0;
-    strict_mode, _: 2;
-    has_exception_handler, _: 3;
-    has_debug_info, _: 4;
-    overflowed, _: 5;
-}
-
-impl From<u8> for FunctionHeaderFlag {
-    fn from(item: u8) -> Self {
-        Self(item)
-    }
-}
-
-bitfield! {
-    struct FunctionHeader(u128);
-    impl Debug;
-    u32;
-    offset, _: 24, 0;
-    param_count, _: 31, 25;
-
-    bytecode_size_in_bytes, _: 46, 32;
-    function_name, _: 63, 47;
-
-    info_offset, _: 88, 64;
-    frame_size, _: 95, 89;
-
-    u8, environment_size, _: 103, 96;
-    u8, highest_read_cache_index, _: 111, 104;
-    u8, highest_write_cache_index, _: 119, 112;
-    u8, into FunctionHeaderFlag, flags, _: 127, 120;
 }
 
 fn get_func_headers_parser<'a>(
