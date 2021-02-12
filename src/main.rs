@@ -10,8 +10,9 @@ use nom::{
 };
 
 use bytecode_file_format::{
-    ByteCodeOptions, CjsModuleTableEntry, FileHeader, FunctionHeader, OverflowStringTableEntry,
-    RegExpTableEntry, SmallStringTableEntry, StringKind, BYTECODE_ALIGNMENT, MAGIC, SHA1_NUM_BYTES,
+    ByteCodeOptions, BytecodeFile, CjsModuleTableEntry, FileHeader, FunctionHeader,
+    OverflowStringTableEntry, RegExpTableEntry, SmallStringTableEntry, StringKind,
+    BYTECODE_ALIGNMENT, MAGIC, SHA1_NUM_BYTES,
 };
 
 mod bytecode_file_format;
@@ -59,7 +60,7 @@ fn padding(input: &[u8]) -> ParserResult<&[u8]> {
     take(HEADER_PADDING)(input)
 }
 
-fn header(input: &[u8]) -> ParserResult<FileHeader> {
+fn file_header(input: &[u8]) -> ParserResult<FileHeader> {
     terminated(
         map(
             tuple((
@@ -81,8 +82,8 @@ fn header(input: &[u8]) -> ParserResult<FileHeader> {
                 string_count: entries[5],
                 overflow_string_count: entries[6],
                 string_storage_size: entries[7],
-                reg_exp_count: entries[8],
-                reg_exp_storage_size: entries[9],
+                regexp_count: entries[8],
+                regexp_storage_size: entries[9],
                 array_buffer_size: entries[10],
                 obj_key_buffer_size: entries[11],
                 obj_value_buffer_size: entries[12],
@@ -98,7 +99,7 @@ fn header(input: &[u8]) -> ParserResult<FileHeader> {
 
 fn multi_count_parser<'a, F, O>(
     bytes: &'a [u8],
-    count: usize,
+    count: u32,
     func: &'a F,
 ) -> impl Fn(&'a [u8]) -> ParserResult<Vec<O>>
 where
@@ -106,7 +107,7 @@ where
 {
     move |input| {
         let input = bytes.align(BYTECODE_ALIGNMENT, input);
-        nom::multi::count(func, count)(input)
+        nom::multi::count(func, count as usize)(input)
     }
 }
 
@@ -128,7 +129,7 @@ fn overflow_table_entry(input: &[u8]) -> ParserResult<OverflowStringTableEntry> 
     })(input)
 }
 
-fn multi_take_parser<'a>(bytes: &'a [u8], size: usize) -> impl Fn(&'a [u8]) -> ParserResult<&[u8]> {
+fn multi_take_parser<'a>(bytes: &'a [u8], size: u32) -> impl Fn(&'a [u8]) -> ParserResult<&[u8]> {
     move |input| {
         let input = bytes.align(BYTECODE_ALIGNMENT, input);
         take(size)(input)
@@ -147,58 +148,65 @@ fn cjs_module_table_entry(input: &[u8]) -> ParserResult<CjsModuleTableEntry> {
     })(input)
 }
 
+fn bytecode_file_parser(input: &[u8]) -> ParserResult<BytecodeFile> {
+    let (bytes, header) = file_header(input).unwrap();
+
+    let (
+        remaining_bytes,
+        (
+            function_headers,
+            string_kinds,
+            identifier_hashes,
+            small_string_table,
+            overflow_string_table,
+            string_storage,
+            array_buffer,
+            obj_key_buffer,
+            obj_value_buffer,
+            regexp_table,
+            regexp_storage,
+            cjs_module_table,
+        ),
+    ) = tuple((
+        multi_count_parser(input, header.function_count, &function_header),
+        multi_count_parser(input, header.string_kind_count, &string_kind),
+        multi_count_parser(input, header.identifier_count, &le_u32),
+        multi_count_parser(input, header.string_count, &string_table_entry),
+        multi_count_parser(input, header.overflow_string_count, &overflow_table_entry),
+        multi_take_parser(input, header.string_storage_size),
+        multi_take_parser(input, header.array_buffer_size),
+        multi_take_parser(input, header.obj_key_buffer_size),
+        multi_take_parser(input, header.obj_value_buffer_size),
+        multi_count_parser(input, header.regexp_count, &regexp_table_entry),
+        multi_take_parser(input, header.regexp_storage_size),
+        multi_count_parser(input, header.cjs_module_count, &cjs_module_table_entry),
+    ))(bytes)
+    .unwrap();
+
+    let bytecode_file = BytecodeFile {
+        header,
+        function_headers,
+        string_kinds,
+        identifier_hashes,
+        small_string_table,
+        overflow_string_table,
+        string_storage,
+        array_buffer,
+        obj_key_buffer,
+        obj_value_buffer,
+        regexp_table,
+        regexp_storage,
+        cjs_module_table,
+    };
+
+    Ok((remaining_bytes, bytecode_file))
+}
+
 fn main() {
     let bytes_vec = fs::read("target/test.hbc").expect("Unable to read file");
     let bytes = bytes_vec.as_slice();
 
-    let (bytes_remaining, file_header) = header(bytes).unwrap();
-
-    let func_count = file_header.function_count as usize;
-    let (bytes_remaining, _func_headers) =
-        multi_count_parser(bytes, func_count, &function_header)(bytes_remaining).unwrap();
-
-    let kinds_count = file_header.string_kind_count as usize;
-    let (bytes_remaining, _string_kinds) =
-        multi_count_parser(bytes, kinds_count, &string_kind)(bytes_remaining).unwrap();
-
-    let identifier_count = file_header.identifier_count as usize;
-    let (bytes_remaining, _identifier_hashes) =
-        multi_count_parser(bytes, identifier_count, &le_u32)(bytes_remaining).unwrap();
-
-    let string_count = file_header.string_count as usize;
-    let (bytes_remaining, _small_string_table) =
-        multi_count_parser(bytes, string_count, &string_table_entry)(bytes_remaining).unwrap();
-
-    let overflow_count = file_header.overflow_string_count as usize;
-    let (bytes_remaining, _overflow_string_table) =
-        multi_count_parser(bytes, overflow_count, &overflow_table_entry)(bytes_remaining).unwrap();
-
-    let string_storage_size = file_header.string_storage_size as usize;
-    let array_buffer_size = file_header.array_buffer_size as usize;
-
-    let obj_key_buffer_size = file_header.obj_key_buffer_size as usize;
-    let obj_value_buffer_size = file_header.obj_value_buffer_size as usize;
-
-    let (bytes_remaining, _result) = tuple((
-        multi_take_parser(bytes, string_storage_size),
-        multi_take_parser(bytes, array_buffer_size),
-        multi_take_parser(bytes, obj_key_buffer_size),
-        multi_take_parser(bytes, obj_value_buffer_size),
-    ))(bytes_remaining)
-    .unwrap();
-
-    let regexp_count = file_header.reg_exp_count as usize;
-    let (bytes_remaining, _regexp_table) =
-        multi_count_parser(bytes, regexp_count, &regexp_table_entry)(bytes_remaining).unwrap();
-
-    let regexp_storage_size = file_header.reg_exp_storage_size as usize;
-    let (bytes_remaining, _regexp_storage) =
-        multi_take_parser(bytes, regexp_storage_size)(bytes_remaining).unwrap();
-
-    let cjs_module_count = file_header.cjs_module_count as usize;
-    let (bytes_remaining, _cjs_module_table) =
-        multi_count_parser(bytes, cjs_module_count, &cjs_module_table_entry)(bytes_remaining)
-            .unwrap();
+    let (bytes_remaining, _bytecode_file) = bytecode_file_parser(bytes).unwrap();
 
     println!("{:?}", bytes.offset(bytes_remaining));
 }

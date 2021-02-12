@@ -25,8 +25,8 @@ pub struct FileHeader<'a> {
     pub string_count: u32,          // Number of strings in the string table
     pub overflow_string_count: u32, // Number of strings in overflow table
     pub string_storage_size: u32,   // Bytes in the blob of string contents
-    pub reg_exp_count: u32,
-    pub reg_exp_storage_size: u32,
+    pub regexp_count: u32,
+    pub regexp_storage_size: u32,
     pub array_buffer_size: u32,
     pub obj_key_buffer_size: u32,
     pub obj_value_buffer_size: u32,
@@ -153,3 +153,20 @@ pub struct RegExpTableEntry {
 
 #[derive(Debug)]
 pub struct CjsModuleTableEntry(pub u32, pub u32);
+
+#[derive(Debug)]
+pub struct BytecodeFile<'a> {
+    pub header: FileHeader<'a>,
+    pub function_headers: Vec<FunctionHeader>,
+    pub string_kinds: Vec<StringKind>,
+    pub identifier_hashes: Vec<u32>,
+    pub small_string_table: Vec<SmallStringTableEntry>,
+    pub overflow_string_table: Vec<OverflowStringTableEntry>,
+    pub string_storage: &'a [u8],
+    pub array_buffer: &'a [u8],
+    pub obj_key_buffer: &'a [u8],
+    pub obj_value_buffer: &'a [u8],
+    pub regexp_table: Vec<RegExpTableEntry>,
+    pub regexp_storage: &'a [u8],
+    pub cjs_module_table: Vec<CjsModuleTableEntry>,
+}
