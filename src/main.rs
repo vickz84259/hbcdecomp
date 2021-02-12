@@ -9,12 +9,12 @@ use nom::{
     IResult, Offset,
 };
 
-use bytecode_format::{
+use bytecode_file_format::{
     ByteCodeOptions, CjsModuleTableEntry, FileHeader, FunctionHeader, OverflowStringTableEntry,
     RegExpTableEntry, SmallStringTableEntry, StringKind, BYTECODE_ALIGNMENT, MAGIC, SHA1_NUM_BYTES,
 };
 
-mod bytecode_format;
+mod bytecode_file_format;
 
 type ParserResult<'a, O> = IResult<&'a [u8], O>;
 
