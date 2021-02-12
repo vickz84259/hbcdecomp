@@ -10,8 +10,8 @@ use nom::{
 };
 
 use bytecode_format::{
-    ByteCodeOptions, FileHeader, FunctionHeader, OverflowStringTableEntry, RegExpTableEntry,
-    SmallStringTableEntry, StringKind, BYTECODE_ALIGNMENT, MAGIC, SHA1_NUM_BYTES,
+    ByteCodeOptions, CjsModuleTableEntry, FileHeader, FunctionHeader, OverflowStringTableEntry,
+    RegExpTableEntry, SmallStringTableEntry, StringKind, BYTECODE_ALIGNMENT, MAGIC, SHA1_NUM_BYTES,
 };
 
 mod bytecode_format;
@@ -141,6 +141,12 @@ fn regexp_table_entry(input: &[u8]) -> ParserResult<RegExpTableEntry> {
     })(input)
 }
 
+fn cjs_module_table_entry(input: &[u8]) -> ParserResult<CjsModuleTableEntry> {
+    map(tuple((le_u32, le_u32)), |(first, second)| {
+        CjsModuleTableEntry(first, second)
+    })(input)
+}
+
 fn main() {
     let bytes_vec = fs::read("target/test.hbc").expect("Unable to read file");
     let bytes = bytes_vec.as_slice();
@@ -182,8 +188,17 @@ fn main() {
     .unwrap();
 
     let regexp_count = file_header.reg_exp_count as usize;
-    let (bytes_remaining, regexp_table) =
+    let (bytes_remaining, _regexp_table) =
         multi_count_parser(bytes, regexp_count, &regexp_table_entry)(bytes_remaining).unwrap();
 
-    println!("{:?}", regexp_table);
+    let regexp_storage_size = file_header.reg_exp_storage_size as usize;
+    let (bytes_remaining, _regexp_storage) =
+        multi_take_parser(bytes, regexp_storage_size)(bytes_remaining).unwrap();
+
+    let cjs_module_count = file_header.cjs_module_count as usize;
+    let (bytes_remaining, _cjs_module_table) =
+        multi_count_parser(bytes, cjs_module_count, &cjs_module_table_entry)(bytes_remaining)
+            .unwrap();
+
+    println!("{:?}", bytes.offset(bytes_remaining));
 }

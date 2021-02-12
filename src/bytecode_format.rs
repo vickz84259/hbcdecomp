@@ -150,3 +150,6 @@ pub struct RegExpTableEntry {
     pub offset: u32,
     pub length: u32,
 }
+
+#[derive(Debug)]
+pub struct CjsModuleTableEntry(pub u32, pub u32);
