@@ -5,6 +5,8 @@ use nom::Offset;
 mod bytecode_file_format;
 mod bytecode_parser;
 
+mod opcodes;
+
 use bytecode_parser::bytecode_file_parser;
 
 fn main() {
