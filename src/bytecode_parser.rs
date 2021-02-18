@@ -120,10 +120,10 @@ fn cjs_module_table_entry(input: &[u8]) -> ParserResult<CjsModuleTableEntry> {
 fn multi_count_parser<'a, F, O>(
     bytes: &'a [u8],
     count: u32,
-    func: &'a F,
+    func: F,
 ) -> impl Fn(&'a [u8]) -> ParserResult<Vec<O>>
 where
-    F: Fn(&'a [u8]) -> ParserResult<O>,
+    F: Fn(&'a [u8]) -> ParserResult<O> + Copy,
 {
     move |input| {
         let input = bytes.align(BYTECODE_ALIGNMENT, input);
@@ -158,18 +158,18 @@ pub fn bytecode_file_parser(input: &[u8]) -> ParserResult<BytecodeFile> {
             cjs_module_table,
         ),
     ) = tuple((
-        multi_count_parser(input, header.function_count, &function_header),
-        multi_count_parser(input, header.string_kind_count, &string_kind),
-        multi_count_parser(input, header.identifier_count, &le_u32),
-        multi_count_parser(input, header.string_count, &string_table_entry),
-        multi_count_parser(input, header.overflow_string_count, &overflow_table_entry),
+        multi_count_parser(input, header.function_count, function_header),
+        multi_count_parser(input, header.string_kind_count, string_kind),
+        multi_count_parser(input, header.identifier_count, le_u32),
+        multi_count_parser(input, header.string_count, string_table_entry),
+        multi_count_parser(input, header.overflow_string_count, overflow_table_entry),
         multi_take_parser(input, header.string_storage_size),
         multi_take_parser(input, header.array_buffer_size),
         multi_take_parser(input, header.obj_key_buffer_size),
         multi_take_parser(input, header.obj_value_buffer_size),
-        multi_count_parser(input, header.regexp_count, &regexp_table_entry),
+        multi_count_parser(input, header.regexp_count, regexp_table_entry),
         multi_take_parser(input, header.regexp_storage_size),
-        multi_count_parser(input, header.cjs_module_count, &cjs_module_table_entry),
+        multi_count_parser(input, header.cjs_module_count, cjs_module_table_entry),
     ))(bytes)
     .unwrap();
 
