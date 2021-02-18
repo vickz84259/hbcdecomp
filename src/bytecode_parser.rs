@@ -49,7 +49,7 @@ fn entries_parser(input: &[u8]) -> ParserResult<Vec<u32>> {
 }
 
 fn options_parser(input: &[u8]) -> ParserResult<ByteCodeOptions> {
-    map(le_u8, |result: u8| ByteCodeOptions(result))(input)
+    map(le_u8, ByteCodeOptions)(input)
 }
 
 fn padding(input: &[u8]) -> ParserResult<&[u8]> {
@@ -94,33 +94,27 @@ fn file_header(input: &[u8]) -> ParserResult<FileHeader> {
 }
 
 fn function_header(input: &[u8]) -> ParserResult<FunctionHeader> {
-    map(le_u128, |result| FunctionHeader(result))(input)
+    map(le_u128, FunctionHeader)(input)
 }
 
 fn string_kind(input: &[u8]) -> ParserResult<StringKind> {
-    map(le_u32, |result| StringKind::new(result))(input)
+    map(le_u32, StringKind::new)(input)
 }
 
 fn string_table_entry(input: &[u8]) -> ParserResult<SmallStringTableEntry> {
-    map(le_u32, |result| SmallStringTableEntry(result))(input)
+    map(le_u32, SmallStringTableEntry)(input)
 }
 
 fn overflow_table_entry(input: &[u8]) -> ParserResult<OverflowStringTableEntry> {
-    map(tuple((le_u32, le_u32)), |(offset, length)| {
-        OverflowStringTableEntry { offset, length }
-    })(input)
+    map(tuple((le_u32, le_u32)), OverflowStringTableEntry::new)(input)
 }
 
 fn regexp_table_entry(input: &[u8]) -> ParserResult<RegExpTableEntry> {
-    map(tuple((le_u32, le_u32)), |(offset, length)| {
-        RegExpTableEntry { offset, length }
-    })(input)
+    map(tuple((le_u32, le_u32)), RegExpTableEntry::new)(input)
 }
 
 fn cjs_module_table_entry(input: &[u8]) -> ParserResult<CjsModuleTableEntry> {
-    map(tuple((le_u32, le_u32)), |(first, second)| {
-        CjsModuleTableEntry(first, second)
-    })(input)
+    map(tuple((le_u32, le_u32)), CjsModuleTableEntry::new)(input)
 }
 
 fn multi_count_parser<'a, F, O>(

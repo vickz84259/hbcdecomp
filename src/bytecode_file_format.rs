@@ -145,14 +145,32 @@ pub struct OverflowStringTableEntry {
     pub length: u32,
 }
 
+impl OverflowStringTableEntry {
+    pub fn new((offset, length): (u32, u32)) -> Self {
+        Self { offset, length }
+    }
+}
+
 #[derive(Debug)]
 pub struct RegExpTableEntry {
     pub offset: u32,
     pub length: u32,
 }
 
+impl RegExpTableEntry {
+    pub fn new((offset, length): (u32, u32)) -> Self {
+        Self { offset, length }
+    }
+}
+
 #[derive(Debug)]
 pub struct CjsModuleTableEntry(pub u32, pub u32);
+
+impl CjsModuleTableEntry {
+    pub fn new((first, second): (u32, u32)) -> Self {
+        Self(first, second)
+    }
+}
 
 #[derive(Debug)]
 pub struct BytecodeFile<'a> {
