@@ -1,6 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
-
-use super::{Expression, Identifier, MemberExpression};
+use super::Register;
 
 #[derive(Debug)]
 pub enum BinaryOperator {
@@ -58,10 +56,9 @@ impl From<BinaryOperator> for &'static str {
 }
 
 #[derive(Debug)]
-pub struct BinaryExpression<'a> {
+pub struct BinaryExpression {
     operator: BinaryOperator,
-    left: Rc<RefCell<Expression<'a>>>,
-    right: Rc<RefCell<Expression<'a>>>,
+    operands: (Register, Register),
 }
 
 #[derive(Debug)]
@@ -102,14 +99,7 @@ impl From<AssignmentOperator> for &'static str {
 }
 
 #[derive(Debug)]
-pub enum Assignee<'a> {
-    Identifier(Identifier),
-    Expression(Rc<RefCell<MemberExpression<'a>>>),
-}
-
-#[derive(Debug)]
-pub struct AssignmentExpression<'a> {
+pub struct AssignmentExpression {
     operator: AssignmentOperator,
-    left: Assignee<'a>,
-    right: Rc<RefCell<Expression<'a>>>,
+    right: Register,
 }
