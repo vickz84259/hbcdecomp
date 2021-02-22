@@ -1,30 +1,79 @@
-use std::{cell::RefCell, rc::Rc};
-
-use super::{Expression, Literal};
+use super::{Register, StringIndex};
 
 #[derive(Debug)]
-pub struct ThisExpression;
-
-#[derive(Debug)]
-pub struct ArrayExpression<'a> {
-    elements: Vec<Option<Rc<RefCell<Expression<'a>>>>>,
+#[repr(u8)]
+pub enum BufferIndex {
+    Word(u16),
+    Dword(u32),
 }
 
 #[derive(Debug)]
-pub enum PropertyKind {
-    Init,
+pub struct NewObjectExpression {
+    no_of_static_elements: u16,
+    key_index: BufferIndex,
+    value_index: BufferIndex,
+    parent: Option<Register>,
+}
+
+#[derive(Debug)]
+pub struct NewArrayExpression {
+    no_of_static_elements: u16,
+    array_index: Option<BufferIndex>,
+}
+
+#[derive(Debug)]
+#[repr(u8)]
+pub enum EnvIndex {
+    Byte(u8),
+    Word(u16),
+}
+
+#[derive(Debug)]
+pub struct EnvExpression {
+    index: EnvIndex,
+    value: Option<Register>,
+}
+
+#[derive(Debug)]
+pub enum ArrayIndex {
+    Byte(u8),
+    Dword(u32),
+}
+
+#[derive(Debug)]
+pub enum Property {
+    String(StringIndex),
+    Index(ArrayIndex),
+    Register(Register),
+}
+
+#[derive(Debug)]
+pub enum ObjectExpKind {
+    Delete,
     Get,
-    Set,
+    Set {
+        value: Register,
+        enumerable: bool,
+    },
+    Define {
+        getter: Register,
+        setter: Register,
+        enumerable: bool,
+    },
 }
 
 #[derive(Debug)]
-struct Property<'a> {
-    key: Literal,
-    value: Rc<RefCell<Expression<'a>>>,
-    kind: PropertyKind,
+pub enum ObjectType {
+    Normal,
+    Array,
+    Global,
+    This,
+    Environment { id: EnvIndex },
 }
 
-#[derive(Debug)]
-pub struct ObjectExpression<'a> {
-    properties: Vec<Property<'a>>,
+pub struct ObjectExpression {
+    object: Register,
+    obj_type: ObjectType,
+    property: Property,
+    kind: ObjectExpKind,
 }
