@@ -1,5 +1,4 @@
 mod binary_operations;
-mod declaration;
 mod expression;
 mod function;
 mod literals;
@@ -8,7 +7,6 @@ mod register;
 mod unary_operations;
 
 pub use binary_operations::*;
-pub use declaration::*;
 pub use expression::*;
 pub use function::*;
 pub use literals::*;
