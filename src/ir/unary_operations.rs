@@ -1,6 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
-
-use super::Expression;
+use super::Register;
 
 #[derive(Debug)]
 pub enum UnaryOperator {
@@ -30,10 +28,10 @@ impl From<UnaryOperator> for &'static str {
 }
 
 #[derive(Debug)]
-pub struct UnaryExpression<'a> {
+pub struct UnaryExpression {
     operator: UnaryOperator,
     prefix: bool,
-    argument: Rc<RefCell<Expression<'a>>>,
+    argument: Register,
 }
 
 #[derive(Debug)]
@@ -54,8 +52,8 @@ impl From<UpdateOperator> for &'static str {
 }
 
 #[derive(Debug)]
-pub struct UpdateExpression<'a> {
+pub struct UpdateExpression {
     operator: UpdateOperator,
     prefix: bool,
-    argument: Rc<RefCell<Expression<'a>>>,
+    argument: Register,
 }
