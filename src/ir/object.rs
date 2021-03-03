@@ -63,7 +63,7 @@ pub enum ObjectExpKind {
 }
 
 #[derive(Debug)]
-pub enum ObjectType {
+pub enum Object {
     Normal,
     Array,
     Global,
@@ -71,9 +71,10 @@ pub enum ObjectType {
     Environment { id: EnvIndex },
 }
 
+#[derive(Debug)]
 pub struct ObjectExpression {
     object: Register,
-    obj_type: ObjectType,
+    obj_type: Object,
     property: Property,
     kind: ObjectExpKind,
 }

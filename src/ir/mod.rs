@@ -17,17 +17,16 @@ pub use unary_operations::*;
 use super::bytecode_file_format::{BytecodeFile, FunctionHeader};
 
 #[derive(Debug)]
-pub enum Statement<'a> {
-    Declaration,
-    Return(Option<Expression<'a>>),
-    Expression(Expression<'a>),
+pub enum Statement {
+    Return(Option<Expression>),
+    Expression(Expression),
     Nop,
 }
 
 #[derive(Debug)]
 pub struct Function<'a> {
     header: &'a FunctionHeader,
-    body: Vec<Statement<'a>>,
+    body: Vec<Statement>,
 }
 
 struct Program<'a> {
