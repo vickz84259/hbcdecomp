@@ -3,14 +3,14 @@ use std::fs;
 use nom::Offset;
 
 mod bytecode_file_format;
-mod bytecode_parser;
+mod parsers;
 
 mod builtins;
 
 mod ir;
 mod opcodes;
 
-use bytecode_parser::bytecode_file_parser;
+use parsers::bytecode_file_parser;
 
 fn main() {
     let bytes_vec = fs::read("target/test.hbc").expect("Unable to read file");

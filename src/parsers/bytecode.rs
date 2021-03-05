@@ -7,7 +7,7 @@ use nom::{
     IResult, Offset,
 };
 
-use super::bytecode_file_format::{
+use crate::bytecode_file_format::{
     ByteCodeOptions, BytecodeFile, CjsModuleTableEntry, FileHeader, FunctionHeader,
     OverflowStringTableEntry, RegExpTableEntry, SmallStringTableEntry, StringKind,
     BYTECODE_ALIGNMENT, MAGIC, SHA1_NUM_BYTES,
