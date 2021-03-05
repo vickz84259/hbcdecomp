@@ -4,7 +4,7 @@ use nom::{
     multi::count,
     number::complete::{le_u128, le_u32, le_u64, le_u8},
     sequence::{terminated, tuple},
-    IResult, Offset,
+    Offset,
 };
 
 use crate::bytecode_file_format::{
@@ -13,7 +13,7 @@ use crate::bytecode_file_format::{
     BYTECODE_ALIGNMENT, MAGIC, SHA1_NUM_BYTES,
 };
 
-type ParserResult<'a, O> = IResult<&'a [u8], O>;
+use super::ParserResult;
 
 const HEADER_PADDING: usize = 31; // bytes
 
