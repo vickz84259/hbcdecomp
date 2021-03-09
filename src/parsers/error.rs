@@ -39,3 +39,12 @@ impl<I> ContextError<I> for ParserError {
         }
     }
 }
+
+impl From<String> for ParserError {
+    fn from(message: String) -> Self {
+        Self {
+            context: "Misc",
+            message: Some(message),
+        }
+    }
+}

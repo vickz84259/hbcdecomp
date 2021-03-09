@@ -634,12 +634,12 @@ pub enum Opcode {
 }
 
 impl TryFrom<u8> for Opcode {
-    type Error = &'static str;
+    type Error = String;
 
     fn try_from(byte: u8) -> Result<Self, Self::Error> {
         match byte {
             0..=178 => Ok(unsafe { std::mem::transmute(byte) }),
-            _ => Err("Unknown Bytecode"),
+            _ => Err(format!("Unknown Bytecode: {}", byte)),
         }
     }
 }
