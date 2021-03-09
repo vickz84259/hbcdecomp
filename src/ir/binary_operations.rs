@@ -1,6 +1,6 @@
 use std::convert::TryFrom;
 
-use nom::{combinator::map, number::complete::le_u8, sequence::tuple};
+use nom::{number::complete::le_u8, sequence::tuple};
 
 use super::{Expression, Register, Statement};
 
