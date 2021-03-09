@@ -1,5 +1,7 @@
 use std::convert::TryFrom;
 
+use crate::parsers::ParserError;
+
 #[derive(Debug)]
 #[repr(u8)]
 pub enum Opcode {
@@ -634,12 +636,15 @@ pub enum Opcode {
 }
 
 impl TryFrom<u8> for Opcode {
-    type Error = String;
+    type Error = ParserError;
 
     fn try_from(byte: u8) -> Result<Self, Self::Error> {
         match byte {
             0..=178 => Ok(unsafe { std::mem::transmute(byte) }),
-            _ => Err(format!("Unknown Bytecode: {}", byte)),
+            _ => Err(ParserError::new(
+                "Opcode",
+                format!("Unknown Opcode: {}", byte),
+            )),
         }
     }
 }

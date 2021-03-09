@@ -40,11 +40,8 @@ impl<I> ContextError<I> for ParserError {
     }
 }
 
-impl From<String> for ParserError {
-    fn from(message: String) -> Self {
-        Self {
-            context: "Misc",
-            message: Some(message),
-        }
+impl From<ParserError> for nom::Err<ParserError> {
+    fn from(error: ParserError) -> Self {
+        nom::Err::Failure(error)
     }
 }
