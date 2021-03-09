@@ -19,7 +19,10 @@ use super::bytecode_file_format::{BytecodeFile, FunctionHeader};
 #[derive(Debug)]
 pub enum Statement {
     Return(Option<Expression>),
-    Expression(Expression),
+    Expression {
+        register: Register,
+        expression: Expression,
+    },
     Nop,
 }
 
