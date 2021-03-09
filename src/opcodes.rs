@@ -111,7 +111,7 @@ pub enum Opcode {
     LShift = 30,
 
     /// Arg1 = Arg2 >> Arg3 (JS signed bitshift right)
-    Rshift = 31,
+    RShift = 31,
 
     /// Arg1 = Arg2 >>> Arg3 (JS unsigned bitshift right)
     URShift = 32,
