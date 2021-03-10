@@ -37,10 +37,12 @@ impl<'a> Align for &'a [u8] {
 
 fn magic_parser(input: &[u8]) -> ParserResult<u64> {
     let result: ParserResult<u64> = verify(le_u64, |b: &u64| *b == MAGIC)(input);
-    result.or(Err(nom::Err::Failure(ParserError::new(
-        "Magic Value",
-        format!("Invalid magic value: Expected {:#X}", MAGIC),
-    ))))
+    result.or_else(|_| {
+        Err(ParserError::new(
+            "Magic Value",
+            format!("Invalid magic value: Expected {:#X}", MAGIC),
+        ))?
+    })
 }
 
 fn hash_parser(input: &[u8]) -> ParserResult<&[u8]> {
