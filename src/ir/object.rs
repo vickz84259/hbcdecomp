@@ -96,8 +96,60 @@ impl OpcodeStatement for NewObjectExpression {
 
 #[derive(Debug)]
 pub struct NewArrayExpression {
-    no_of_static_elements: u16,
+    array_size: u16,
     array_index: Option<BufferIndex>,
+}
+
+impl NewArrayExpression {
+    fn new(array_size: u16) -> Self {
+        Self {
+            array_size,
+            array_index: None,
+        }
+    }
+
+    fn new_buffer(array_size: u16, array_index: u16) -> Self {
+        Self {
+            array_size,
+            array_index: Some(BufferIndex::Word(array_index)),
+        }
+    }
+
+    fn new_buffer_long(array_size: u16, array_index: u32) -> Self {
+        Self {
+            array_size,
+            array_index: Some(BufferIndex::Dword(array_index)),
+        }
+    }
+}
+
+impl OpcodeStatement for NewArrayExpression {
+    fn parse(opcode: Opcode, input: &[u8]) -> ParserResult<Statement> {
+        let (remaining, (register_byte, array_size)) = tuple((le_u8, le_u16))(input)?;
+
+        let (remaining, new_array) = match opcode {
+            Opcode::NewArray => Ok((remaining, Self::new(array_size))),
+            Opcode::NewArrayWithBuffer => {
+                let (remaining, array_index) = le_u16(remaining)?;
+                Ok((remaining, Self::new_buffer(array_size, array_index)))
+            }
+            Opcode::NewArrayWithBufferLong => {
+                let (remaining, array_index) = le_u32(remaining)?;
+                Ok((remaining, Self::new_buffer_long(array_size, array_index)))
+            }
+            _ => Err(ParserError::new(
+                "Opcode",
+                format!("{:?} is not a NewArrayExpression", opcode),
+            )),
+        }?;
+
+        let statement = Statement::Expression {
+            register: Register::Byte(register_byte),
+            expression: Expression::NewArray(new_array),
+        };
+
+        Ok((remaining, statement))
+    }
 }
 
 #[derive(Debug)]
