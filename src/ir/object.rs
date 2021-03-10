@@ -1,7 +1,6 @@
 use super::{Register, StringIndex};
 
 #[derive(Debug)]
-#[repr(u8)]
 pub enum BufferIndex {
     Word(u16),
     Dword(u32),
@@ -22,7 +21,6 @@ pub struct NewArrayExpression {
 }
 
 #[derive(Debug)]
-#[repr(u8)]
 pub enum EnvIndex {
     Byte(u8),
     Word(u16),
