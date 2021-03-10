@@ -56,16 +56,16 @@ pub struct UnaryExpression {
 
 impl OpcodeStatement for UnaryExpression {
     fn parse(opcode: Opcode, input: &[u8]) -> ParserResult<Statement> {
-        let (remaining, (byte, operand)) = tuple((le_u8, le_u8))(input)?;
+        let (remaining, (register_byte, operand)) = tuple((le_u8, le_u8))(input)?;
 
         let expression = Expression::Unary(Self {
             operator: UnaryOperator::try_from(opcode)?,
             prefix: true,
-            argument: Register::from(operand),
+            argument: Register::Byte(operand),
         });
 
         let statement = Statement::Expression {
-            register: Register::from(byte),
+            register: Register::Byte(register_byte),
             expression,
         };
         Ok((remaining, statement))

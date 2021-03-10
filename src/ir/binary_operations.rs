@@ -109,11 +109,11 @@ impl OpcodeStatement for BinaryExpression {
 
         let expression = Expression::Binary(Self {
             operator: BinaryOperator::try_from(opcode)?,
-            operands: (Register::from(operand_1), Register::from(operand_2)),
+            operands: (Register::Byte(operand_1), Register::Byte(operand_2)),
         });
 
         let statement = Statement::Expression {
-            register: Register::from(register_byte),
+            register: Register::Byte(register_byte),
             expression,
         };
 
