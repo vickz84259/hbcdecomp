@@ -1,4 +1,4 @@
-use crate::ir::{EnvIndex, Register, StringIndex};
+use crate::ir::{Register, StringIndex};
 
 #[derive(Debug)]
 pub enum ArrayIndex {
@@ -34,7 +34,7 @@ pub enum Object {
     Array,
     Global,
     This,
-    Environment { id: EnvIndex },
+    Environment { id: u8 },
 }
 
 #[derive(Debug)]

@@ -9,7 +9,7 @@ pub enum Expression {
     Register(Register),
     NewObject(NewObjectExpression),
     NewArray(NewArrayExpression),
-    EnvExp(EnvExpression),
+    LoadFromEnv(EnvExpression),
     Object(Object),
     ObjExp(ObjectExpression),
     Unary(UnaryExpression),

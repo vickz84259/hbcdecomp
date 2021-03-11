@@ -23,6 +23,7 @@ pub enum Statement {
         register: Register,
         expression: Expression,
     },
+    StoreToEnv(EnvExpression),
     Nop,
 }
 
