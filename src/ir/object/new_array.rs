@@ -27,18 +27,17 @@ impl NewArrayExpression {
         Ok((input, new_array))
     }
 
-    fn parse_buffer(input: &[u8], array_size: u16) -> ParserResult<Self> {
-        map(le_u16, |array_index| Self {
-            array_size,
-            array_index: Some(BufferIndex::Word(array_index)),
-        })(input)
-    }
+    fn parse_buffer(input: &[u8], array_size: u16, is_long: bool) -> ParserResult<Self> {
+        let (input, array_index) = match is_long {
+            true => map(le_u32, |x| Some(BufferIndex::Dword(x)))(input),
+            false => map(le_u16, |x| Some(BufferIndex::Word(x)))(input),
+        }?;
 
-    fn parse_buffer_long(input: &[u8], array_size: u16) -> ParserResult<Self> {
-        map(le_u32, |array_index| Self {
+        let new_array = Self {
             array_size,
-            array_index: Some(BufferIndex::Dword(array_index)),
-        })(input)
+            array_index,
+        };
+        Ok((input, new_array))
     }
 }
 
@@ -48,8 +47,8 @@ impl OpcodeStatement for NewArrayExpression {
 
         let (input, new_array) = match opcode {
             Opcode::NewArray => Self::parse_new(input, array_size),
-            Opcode::NewArrayWithBuffer => Self::parse_buffer(input, array_size),
-            Opcode::NewArrayWithBufferLong => Self::parse_buffer_long(input, array_size),
+            Opcode::NewArrayWithBuffer => Self::parse_buffer(input, array_size, false),
+            Opcode::NewArrayWithBufferLong => Self::parse_buffer(input, array_size, true),
             _ => Err(ParserError::new(
                 "Opcode",
                 format!("{:?} is not a NewArrayExpression", opcode),
