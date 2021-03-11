@@ -1,16 +1,4 @@
-use crate::ir::{Register, StringIndex};
-
-#[derive(Debug)]
-pub enum EnvIndex {
-    Byte(u8),
-    Word(u16),
-}
-
-#[derive(Debug)]
-pub struct EnvExpression {
-    index: EnvIndex,
-    value: Option<Register>,
-}
+use crate::ir::{EnvIndex, Register, StringIndex};
 
 #[derive(Debug)]
 pub enum ArrayIndex {
