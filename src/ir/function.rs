@@ -2,7 +2,9 @@ use std::convert::TryFrom;
 
 use nom::{
     combinator::map,
+    multi::count,
     number::complete::{le_u16, le_u32, le_u8},
+    sequence::tuple,
 };
 
 use crate::{
@@ -123,4 +125,42 @@ impl OpcodeStatement for FrameCall {
 pub struct CallExpression {
     function: FunctionIndex,
     arguments: Vec<Register>,
+}
+
+impl OpcodeStatement for CallExpression {
+    fn parse(opcode: Opcode, input: &[u8]) -> ParserResult<Statement> {
+        let (input, (register, function)) =
+            map(tuple((le_u8, le_u8)), |(register_byte, function_byte)| {
+                (
+                    Register::Byte(register_byte),
+                    FunctionIndex::Register(Register::Byte(function_byte)),
+                )
+            })(input)?;
+
+        let args_no = match opcode {
+            Opcode::Call1 => 1,
+            Opcode::Call2 => 2,
+            Opcode::Call3 => 3,
+            Opcode::Call4 => 4,
+
+            _ => {
+                return Err(ParserError::new(
+                    "Opcode",
+                    format!("{:?} is not a CallExpression", opcode),
+                ))?
+            }
+        };
+        let (input, arguments) = count(map(le_u8, Register::Byte), args_no)(input)?;
+
+        let call_expression = Self {
+            function,
+            arguments,
+        };
+        let statement = Statement::Expression {
+            register,
+            expression: Expression::CallExp(call_expression),
+        };
+
+        Ok((input, statement))
+    }
 }
