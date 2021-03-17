@@ -1,5 +1,7 @@
 use std::convert::TryFrom;
 
+use crate::parsers::ParserError;
+
 #[derive(Debug)]
 #[repr(u8)]
 pub enum Builtins {
@@ -73,12 +75,15 @@ pub enum Builtins {
 }
 
 impl TryFrom<u8> for Builtins {
-    type Error = &'static str;
+    type Error = ParserError;
 
     fn try_from(byte: u8) -> Result<Self, Self::Error> {
         match byte {
             0..=51 => Ok(unsafe { std::mem::transmute(byte) }),
-            _ => Err("Invalid builtin method index"),
+            _ => Err(ParserError::new(
+                "Opcode",
+                format!("Invalid builtin method: {}", byte),
+            )),
         }
     }
 }
